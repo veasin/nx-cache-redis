@@ -1,0 +1,29 @@
+{
+  "name": "urn2/nx-cache-redis",
+  "description": "redis cache for nx",
+  "homepage": "https://github.com/urn2/nx",
+  "type": "framework",
+  "authors": [
+    {
+      "name": "Vea",
+      "homepage": "http://www.uper.net",
+      "email": "vea@live.cn"
+    }
+  ],
+  "require": {
+    "php": ">=8.1",
+    "ext-redis": "*",
+    "urn2/nx": ">=1.2"
+  },
+  "minimum-stability": "stable",
+  "autoload": {
+    "psr-4": {
+      "nx\\parts\\cache\\": [
+        "src/parts/"
+      ],
+      "nx\\helpers\\cache\\": [
+        "src/helpers/"
+      ]
+    }
+  }
+}
