@@ -12,21 +12,36 @@ trait redis{
 	 */
 	public function cache(string $name='default'):?\Redis{
 		if(!array_key_exists($name, $this->cache_redis)){
-			$config =($this->setup['cache/redis']??[])[$name] ?? null;
-			if(null ===$config){
+			$config=($this->setup['cache/redis'] ?? [])[$name] ?? null;
+			if(null === $config){
 				$this->throw(500, "cache[{$name}] config error.");
 			}
-			$redis =new \Redis();
+			$redis=new \Redis();
 			if(!empty($config)){
-				$redis->connect($config['host'],
-					$config['port'] ?? 6379,
-					$config['timeout'] ?? 1,
-				);
+				$redis->connect($config['host'], $config['port'] ?? 6379, $config['timeout'] ?? 1,);
 				if(array_key_exists('auth', $config)) $redis->auth($config['auth']);
 				if(array_key_exists('select', $config)) $redis->select($config['select']);
 			}
-			$this->cache_redis[$name] =$redis;
+			$this->cache_redis[$name]=$redis;
 		}
 		return $this->cache_redis[$name];
+	}
+	/**
+	 * @param string $key      写入缓存的key
+	 * @param null   $callback 回调函数
+	 * @param int    $ttl      缓存时长秒数
+	 * @param string $config   配置文件名
+	 * @return mixed
+	 */
+	public function cacheCallback(string $key, mixed $callback=null, int $ttl=600, string $config='default'):mixed{
+		$Cache=$this->cache($config);
+		$data=$Cache->get($key);
+		if(!empty($data)) return $data;
+		if(null === $callback) $this->throw(500, '无效的回调函数');
+		if(is_callable($callback)){
+			$data=call_user_func($callback);
+		}else $data=$callback;
+		$Cache->set($key, $data, $ttl);
+		return $data;
 	}
 }
