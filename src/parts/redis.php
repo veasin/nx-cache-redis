@@ -33,15 +33,15 @@ trait redis{
 	 * @param string $config   配置文件名
 	 * @return mixed
 	 */
-	public function cacheCallback(string $key, mixed $callback=null, int $ttl=600, string $config='default'):mixed{
+	public function cacheJson(string $key, mixed $callback=null, int $ttl=600, string $config='default'):mixed{
 		$Cache=$this->cache($config);
 		$data=$Cache->get($key);
-		if(!empty($data)) return $data;
+		if(!empty($data)) return json_decode($data, true);
 		if(null === $callback) $this->throw(500, '无效的回调函数');
 		if(is_callable($callback)){
 			$data=call_user_func($callback);
 		}else $data=$callback;
-		$Cache->set($key, $data, $ttl);
+		$Cache->set($key, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $ttl);
 		return $data;
 	}
 }
