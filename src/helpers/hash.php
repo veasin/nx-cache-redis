@@ -53,6 +53,7 @@ class hash{
 	public function get(string $field, mixed $callback=null):mixed{
 		try{
 			$data=$this->cache->hGet($this->key, $field);
+			if(is_string($data)) $data=json_decode($data, true);
 		}catch(RedisException $e){
 			$this->log('cache hash error: '.$e->getMessage());
 			$data=null;
@@ -60,7 +61,7 @@ class hash{
 		if((null === $data || false === $data) && is_callable($callback)){
 			$data=call_user_func($callback, $field, $this);
 			$this->set($field, $data);
-		}else $data=json_decode($data, true);
+		}
 		return $data;
 	}
 	public function keys():array{
