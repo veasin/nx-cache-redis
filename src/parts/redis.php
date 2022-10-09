@@ -9,16 +9,17 @@ trait redis{
 	/**
 	 * @param string $name app->setup['cache/redis']
 	 * @return \Redis|null
+	 * @throws \RedisException
 	 */
 	public function cache(string $name='default'):?\Redis{
 		if(!array_key_exists($name, $this->cache_redis)){
 			$config=($this->setup['cache/redis'] ?? [])[$name] ?? null;
 			if(null === $config){
-				$this->throw(500, "cache[{$name}] config error.");
+				$this->throw(500, "cache[$name] config error.");
 			}
 			$redis=new \Redis();
 			if(!empty($config)){
-				$redis->connect($config['host'], $config['port'] ?? 6379, $config['timeout'] ?? 1,);
+				$redis->connect($config['host'], $config['port'] ?? 6379, $config['timeout'] ?? 1);
 				if(array_key_exists('auth', $config)) $redis->auth($config['auth']);
 				if(array_key_exists('select', $config)) $redis->select($config['select']);
 			}
@@ -32,6 +33,7 @@ trait redis{
 	 * @param int    $ttl      缓存时长秒数
 	 * @param string $config   配置文件名
 	 * @return mixed
+	 * @throws \RedisException
 	 */
 	public function cacheJson(string $key, mixed $callback=null, int $ttl=600, string $config='default'):mixed{
 		$Cache=$this->cache($config);
