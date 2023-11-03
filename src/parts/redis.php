@@ -13,7 +13,7 @@ trait redis{
 	 */
 	public function cache(string $name='default'):?\Redis{
 		if(!array_key_exists($name, $this->cache_redis)){
-			$config=($this->setup['cache/redis'] ?? [])[$name] ?? null;
+			$config=($this['cache/redis'] ?? [])[$name] ?? null;
 			if(null === $config){
 				$this->throw(500, "cache[$name] config error.");
 			}
