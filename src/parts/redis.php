@@ -3,6 +3,7 @@ namespace nx\parts\cache;
 
 /**
  * @method throw(int $int, string $string)
+ * @method runtime(string $string, string $string1)
  */
 trait redis{
 	protected array $cache_redis=[];//缓存
@@ -38,11 +39,15 @@ trait redis{
 	public function cacheJson(string $key, mixed $callback=null, int $ttl=600, string $config='default'):mixed{
 		$Cache=$this->cache($config);
 		$data=$Cache->get($key);
-		if(!empty($data)) return json_decode($data, true);
+		if(!empty($data)) {
+			$this->runtime("get <$key>", 'cr');
+			return json_decode($data, true);
+		}
 		if(null === $callback) $this->throw(500, '无效的回调函数');
 		if(is_callable($callback)){
 			$data=call_user_func($callback);
 		}else $data=$callback;
+		$this->runtime("set <$key>", 'cr');
 		$Cache->set($key, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $ttl);
 		return $data;
 	}

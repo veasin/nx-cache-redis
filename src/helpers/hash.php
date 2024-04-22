@@ -16,6 +16,11 @@ class hash{
 		$this->key=$key;
 		$this->ttl=$ttl;
 	}
+	/**
+	 * 获取全部的hash和对应的值，如果不存在任何hash，会执行回调并写入回调结果并返回
+	 * @param mixed|null $callback
+	 * @return array
+	 */
 	public function getAll(mixed $callback=null):array{
 		try{
 			$data=$this->cache->hGetAll($this->key);
@@ -35,6 +40,11 @@ class hash{
 		}
 		return $_data;
 	}
+	/**
+	 * 一次删除多个hash key
+	 * @param string ...$fields
+	 * @return void
+	 */
 	public function delete(string ...$fields):void{
 		try{
 			$this->cache->hDel($this->key, ...$fields);
@@ -42,6 +52,11 @@ class hash{
 			$this->log('cache hash error: '.$e->getMessage());
 		}
 	}
+	/**
+	 * 判断hash 可以是否都存在
+	 * @param string ...$fields
+	 * @return int
+	 */
 	public function exists(string ...$fields):int{
 		try{
 			return $this->cache->hExists($this->key, ...$fields);
@@ -50,6 +65,12 @@ class hash{
 			return -1;
 		}
 	}
+	/**
+	 * 获取指定hash key的值，如不存在会执行回调，或设置为指定值
+	 * @param string     $field
+	 * @param mixed|null $callback 如果为回调会执行，否则会直接返回此值
+	 * @return mixed
+	 */
 	public function get(string $field, mixed $callback=null):mixed{
 		try{
 			$data=$this->cache->hGet($this->key, $field);
@@ -64,6 +85,10 @@ class hash{
 		}
 		return $data;
 	}
+	/**
+	 * 返回所有hash key的数组
+	 * @return array
+	 */
 	public function keys():array{
 		try{
 			return $this->cache->hKeys($this->key);
@@ -72,6 +97,10 @@ class hash{
 			return [];
 		}
 	}
+	/**
+	 * 返回已存在的hash key的个数
+	 * @return int
+	 */
 	public function length():int{
 		try{
 			return $this->cache->hLen($this->key);
@@ -80,6 +109,11 @@ class hash{
 			return -1;
 		}
 	}
+	/**
+	 * 一次获取多个hash key的值并拼装为数组
+	 * @param string ...$fields
+	 * @return array
+	 */
 	public function getMore(string ...$fields):array{
 		try{
 			$data=$this->cache->hMGet($this->key, $fields);
@@ -93,6 +127,11 @@ class hash{
 		}
 		return $_data;
 	}
+	/**
+	 * 一次性设置多个hash key的值，json序列化
+	 * @param array $set
+	 * @return bool
+	 */
 	public function setMore(array $set):bool{
 		$_set=[];
 		foreach($set as $index=>$item){
@@ -105,6 +144,12 @@ class hash{
 			return false;
 		}
 	}
+	/**
+	 * 设置key的hash key 的值
+	 * @param string $field
+	 * @param mixed  $value
+	 * @return bool
+	 */
 	public function set(string $field, mixed $value):bool{
 		try{
 			return $this->cache->hSet($this->key, $field, json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -113,6 +158,12 @@ class hash{
 			return false;
 		}
 	}
+	/**
+	 * 如果指定的field不存在就设置
+	 * @param string $field hash key
+	 * @param mixed  $value 值
+	 * @return bool
+	 */
 	public function setNotExits(string $field, mixed $value):bool{
 		try{
 			return $this->cache->hSetNx($this->key, $field, json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -121,6 +172,10 @@ class hash{
 			return false;
 		}
 	}
+	/**
+	 * 返回此key的所有的值数组
+	 * @return array
+	 */
 	public function values():array{
 		try{
 			$data=$this->cache->hVals($this->key);
@@ -133,5 +188,26 @@ class hash{
 			$_data[$index]=json_decode($datum, true);
 		}
 		return $_data;
+	}
+	/**
+	 * 如果指定的key不存在，就执行。如果回调函数有返回值，默认会更新到此key上
+	 * @param callable|null $callback 回调函数
+	 * @param bool          $update 是否更新返回值
+	 * @return void
+	 */
+	public function notExitsSet(callable $callback=null, bool $update =true):void{
+		try{
+			if($this->cache->exists($this->key)) return ;
+		}catch(RedisException $e){
+			$this->log('cache hash error: '.$e->getMessage());
+		}
+		$data =is_callable($callback) ?call_user_func($callback) :$callback;
+		if(!$data && $update){
+			try{
+				$this->cache->set($this->key, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $this->ttl);
+			}catch(RedisException $e){
+				$this->log('cache hash error: '.$e->getMessage());
+			}
+		}
 	}
 }
