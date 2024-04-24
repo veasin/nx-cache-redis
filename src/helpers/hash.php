@@ -16,17 +16,22 @@ class hash{
 		$this->key=$key;
 		$this->ttl=$ttl;
 	}
+	protected function log(string $content=''){
+		$this->runtime($content, 'cr', true);
+	}
 	/**
 	 * 获取全部的hash和对应的值，如果不存在任何hash，会执行回调并写入回调结果并返回
 	 * @param mixed|null $callback
 	 * @return array
 	 */
 	public function getAll(mixed $callback=null):array{
+		$memo ="get $this->key : ";
 		try{
 			$data=$this->cache->hGetAll($this->key);
+			$memo .='OK ';
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
 			$data=[];
+			$memo .="ERR:{$e->getMessage()} ";
 		}
 		$_data=[];
 		foreach($data as $index=>$datum){
@@ -34,10 +39,13 @@ class hash{
 		}
 		if(0 === count($_data) && is_callable($callback)){
 			$_data=call_user_func($callback, $this);
+			$memo .="CB ";
 			if(is_array($_data)){
+				$memo .="sM ^";
 				$this->setMore($_data);
 			}else $_data=[];
 		}
+		$this->log($memo);
 		return $_data;
 	}
 	/**
@@ -46,11 +54,14 @@ class hash{
 	 * @return void
 	 */
 	public function delete(string ...$fields):void{
+		$memo ="delete {$this->key}[".implode(',', $fields)."] :";
 		try{
 			$this->cache->hDel($this->key, ...$fields);
+			$memo .="OK ";
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
+			$memo .="ERR:{$e->getMessage()} ";
 		}
+		$this->log($memo);
 	}
 	/**
 	 * 判断hash 可以是否都存在
@@ -58,10 +69,15 @@ class hash{
 	 * @return int
 	 */
 	public function exists(string ...$fields):int{
+		$memo ="exists {$this->key}[".implode(',', $fields)."] :";
 		try{
-			return $this->cache->hExists($this->key, ...$fields);
+			$r = $this->cache->hExists($this->key, ...$fields);
+			$memo .=$r ?'Yes' : 'No';
+			$this->log($memo);
+			return $r;
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
+			$memo .="ERR:{$e->getMessage()} ";
+			$this->log($memo);
 			return -1;
 		}
 	}
@@ -72,17 +88,24 @@ class hash{
 	 * @return mixed
 	 */
 	public function get(string $field, mixed $callback=null):mixed{
+		$memo ="get {$this->key}[$field] :";
 		try{
 			$data=$this->cache->hGet($this->key, $field);
 			if(is_string($data)) $data=json_decode($data, true);
+			$memo .="OK ";
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
+			$memo .="ERR:{$e->getMessage()} ";
 			$data=null;
 		}
 		if((null === $data || false === $data) && is_callable($callback)){
+			$memo .="CB ";
 			$data=call_user_func($callback, $field, $this);
-			$this->set($field, $data);
+			if(null !==$data){
+				$memo.="SET ^";
+				$this->set($field, $data);
+			}
 		}
+		$this->log($memo);
 		return $data;
 	}
 	/**
@@ -90,10 +113,15 @@ class hash{
 	 * @return array
 	 */
 	public function keys():array{
+		$memo ="{$this->key}.keys :";
 		try{
-			return $this->cache->hKeys($this->key);
+			$r = $this->cache->hKeys($this->key);
+			if(is_array($r)) $memo.="OK ";
+			$this->log($memo);
+			return $r;
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
+			$memo .="ERR:{$e->getMessage()} ";
+			$this->log($memo);
 			return [];
 		}
 	}
@@ -102,10 +130,15 @@ class hash{
 	 * @return int
 	 */
 	public function length():int{
+		$memo ="{$this->key}.length :";
 		try{
-			return $this->cache->hLen($this->key);
+			$r = $this->cache->hLen($this->key);
+			$memo .=$r;
+			$this->log($memo);
+			return $r;
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
+			$memo .="ERR:{$e->getMessage()} ";
+			$this->log($memo);
 			return -1;
 		}
 	}
@@ -115,16 +148,19 @@ class hash{
 	 * @return array
 	 */
 	public function getMore(string ...$fields):array{
+		$memo ="get {$this->key}[".implode(',', $fields)."] :";
 		try{
 			$data=$this->cache->hMGet($this->key, $fields);
+			$memo .="OK ";
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
+			$memo .="ERR:{$e->getMessage()} ";
 			$data=[];
 		}
 		$_data=[];
 		foreach($data as $index=>$datum){
 			$_data[$index]=json_decode($datum, true);
 		}
+		$this->log($memo);
 		return $_data;
 	}
 	/**
@@ -133,14 +169,19 @@ class hash{
 	 * @return bool
 	 */
 	public function setMore(array $set):bool{
+		$memo ="set {$this->key}[".implode(',', array_keys($set))."] :";
 		$_set=[];
 		foreach($set as $index=>$item){
 			$_set[$index]=json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		}
 		try{
-			return $this->cache->hMSet($this->key, $_set);
+			$r = $this->cache->hMSet($this->key, $_set);
+			$memo .=$r ?'OK' :'Fail';
+			$this->log($memo);
+			return $r;
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
+			$memo .="ERR:{$e->getMessage()} ";
+			$this->log($memo);
 			return false;
 		}
 	}
@@ -151,10 +192,15 @@ class hash{
 	 * @return bool
 	 */
 	public function set(string $field, mixed $value):bool{
+		$memo ="set {$this->key}[$field] :";
 		try{
-			return $this->cache->hSet($this->key, $field, json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+			$r = $this->cache->hSet($this->key, $field, json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+			$memo .=$r ?'OK' :'Fail';
+			$this->log($memo);
+			return $r;
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
+			$memo .="ERR:{$e->getMessage()} ";
+			$this->log($memo);
 			return false;
 		}
 	}
@@ -165,10 +211,15 @@ class hash{
 	 * @return bool
 	 */
 	public function setNotExits(string $field, mixed $value):bool{
+		$memo ="not exits set {$this->key}[$field] :";
 		try{
-			return $this->cache->hSetNx($this->key, $field, json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+			$r = $this->cache->hSetNx($this->key, $field, json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+			$memo .=$r ?'OK' :'Fail';
+			$this->log($memo);
+			return $r;
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
+			$memo .="ERR:{$e->getMessage()} ";
+			$this->log($memo);
 			return false;
 		}
 	}
@@ -177,16 +228,19 @@ class hash{
 	 * @return array
 	 */
 	public function values():array{
+		$memo ="{$this->key}.values :";
 		try{
 			$data=$this->cache->hVals($this->key);
+			$memo .="OK ";
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
+			$memo .="ERR:{$e->getMessage()} ";
 			$data=[];
 		}
 		$_data=[];
 		foreach($data as $index=>$datum){
 			$_data[$index]=json_decode($datum, true);
 		}
+		$this->log($memo);
 		return $_data;
 	}
 	/**
@@ -196,18 +250,22 @@ class hash{
 	 * @return void
 	 */
 	public function notExitsSet(callable $callback=null, bool $update =true):void{
+		$memo ="exits $this->key :";
 		try{
 			if($this->cache->exists($this->key)) return ;
 		}catch(RedisException $e){
-			$this->log('cache hash error: '.$e->getMessage());
+			$memo .="ERR:{$e->getMessage()} ";
 		}
 		$data =is_callable($callback) ?call_user_func($callback) :$callback;
-		if(!$data && $update){
+		if(!!$data && $update){
+			$memo .="SET ";
 			try{
-				$this->cache->set($this->key, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $this->ttl);
+				$this->set($this->key, $data);
+				$memo .="OK ";
 			}catch(RedisException $e){
-				$this->log('cache hash error: '.$e->getMessage());
+				$memo .="ERR:{$e->getMessage()} ";
 			}
 		}
+		$this->log($memo);
 	}
 }
