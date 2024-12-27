@@ -5,6 +5,9 @@ use nx\parts\callApp;
 use Redis;
 use RedisException;
 
+/**
+ * @method runtime(string $content, string $string, true $true)
+ */
 class hash{
 	use callApp;
 
@@ -16,7 +19,7 @@ class hash{
 		$this->key=$key;
 		$this->ttl=$ttl;
 	}
-	protected function log(string $content=''){
+	protected function log(string $content=''): void{
 		$this->runtime($content, 'cr', true);
 	}
 	/**
@@ -246,10 +249,10 @@ class hash{
 	/**
 	 * 如果指定的key不存在，就执行。如果回调函数有返回值，默认会更新到此key上
 	 * @param callable|null $callback 回调函数
-	 * @param bool          $update 是否更新返回值
+	 * @param bool          $update   是否更新返回值
 	 * @return void
 	 */
-	public function notExitsSet(callable $callback=null, bool $update =true):void{
+	public function notExitsSet(?callable $callback=null, bool $update =true):void{
 		$memo ="exits $this->key :";
 		try{
 			if($this->cache->exists($this->key)) return ;
